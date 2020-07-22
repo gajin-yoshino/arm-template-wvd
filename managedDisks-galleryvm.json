@@ -9,12 +9,6 @@
       },
       "defaultValue": "https://wvdportalstorageblob.blob.core.windows.net/galleryartifacts/Configuration.zip"
     },
-    "rdshVmNames": {
-       "type": "array",
-       "metadata": {
-            "description": "normarized VM names"
-        }
-    },
     "VmImageVhdUri": {
       "type": "string",
       "metadata": {
@@ -283,12 +277,12 @@
     {
       "copy": {
         "name": "rdsh-pip-loop",
-        "count": "[length(parameters('rdshVmNames'))]"
+        "count": "[parameters('rdshNumberOfInstances')]"
       },
       "condition": "[parameters('usePublicIP')]",
       "type": "Microsoft.Network/publicIpAddresses",
       "apiVersion": "2019-02-01",
-      "name": "[concat(parameters('rdshVmNames')[copyIndex()], '-ip')]",
+      "name": "[concat(parameters('rdshPrefix'), add(copyindex(), parameters('vmInitialNumber')), '-ip')]",
       "location": "[parameters('location')]",
       "tags": "[parameters('publicIPAddressTags')]",
       "sku": {
@@ -301,12 +295,12 @@
     {
       "apiVersion": "2018-11-01",
       "type": "Microsoft.Network/networkInterfaces",
-      "name": "[concat(parameters('rdshVmNames')[copyIndex()], '-nic')]",
+      "name": "[concat(parameters('rdshPrefix'), add(copyindex(), parameters('vmInitialNumber')), '-nic')]",
       "location": "[parameters('location')]",
       "tags": "[parameters('networkInterfaceTags')]",
       "copy": {
         "name": "rdsh-nic-loop",
-        "count": "[length(parameters('rdshVmNames'))]"
+        "count": "[parameters('rdshNumberOfInstances')]"
       },
       "properties": {
         "ipConfigurations": [
@@ -317,7 +311,7 @@
               "subnet": {
                 "id": "[parameters('subnet-id')]"
               },
-              "publicIpAddress": "[if(parameters('usePublicIP'), json(concat('{\"id\": \"', resourceId('Microsoft.Network/publicIpAddresses', concat(parameters('rdshVmNames')[copyIndex()], '-ip')), '\"}')), json('null'))]"
+              "publicIpAddress": "[if(parameters('usePublicIP'), json(concat('{\"id\": \"', resourceId('Microsoft.Network/publicIpAddresses', concat(parameters('rdshPrefix'), add(copyindex(), parameters('vmInitialNumber')), '-ip')), '\"}')), json('null'))]"
             }
           }
         ],
@@ -332,15 +326,15 @@
     {
       "apiVersion": "2018-10-01",
       "type": "Microsoft.Compute/virtualMachines",
-      "name": "[parameters('rdshVmNames')[copyIndex()]]",
+      "name": "[concat(parameters('rdshPrefix'), add(copyindex(), parameters('vmInitialNumber')))]",
       "location": "[parameters('location')]",
       "tags": "[parameters('virtualMachineTags')]",
       "copy": {
         "name": "rdsh-vm-loop",
-        "count": "[length(parameters('rdshVmNames'))]"
+        "count": "[parameters('rdshNumberOfInstances')]"
       },
       "dependsOn": [
-        "[concat('Microsoft.Network/networkInterfaces/', parameters('rdshVmNames')[copyIndex()], '-nic')]"
+        "[concat('Microsoft.Network/networkInterfaces/', parameters('rdshPrefix'), add(copyindex(), parameters('vmInitialNumber')), '-nic')]"
       ],
       "properties": {
         "hardwareProfile": {
@@ -350,7 +344,7 @@
           "id": "[resourceId('Microsoft.Compute/availabilitySets/', concat(parameters('rdshPrefix'), 'availabilitySet-', parameters('location')))]"
         },
         "osProfile": {
-          "computerName": "[parameters('rdshVmNames')[copyIndex()]]",
+          "computerName": "[concat(parameters('rdshPrefix'), add(copyindex(), parameters('vmInitialNumber')))]",
           "adminUsername": "[variables('existingDomainUsername')]",
           "adminPassword": "[parameters('administratorAccountPassword')]"
         },
@@ -371,7 +365,7 @@
         "networkProfile": {
           "networkInterfaces": [
             {
-              "id": "[resourceId('Microsoft.Network/networkInterfaces',concat(parameters('rdshVmNames')[copyIndex()], '-nic'))]"
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',concat(parameters('rdshPrefix'), add(copyindex(), parameters('vmInitialNumber')), '-nic'))]"
             }
           ]
         },
@@ -386,14 +380,14 @@
     {
       "apiVersion": "2018-10-01",
       "type": "Microsoft.Compute/virtualMachines/extensions",
-      "name": "[concat(parameters('rdshVmNames')[copyIndex()], '/', 'joindomain')]",
+      "name": "[concat(parameters('rdshPrefix'), add(copyindex(), parameters('vmInitialNumber')), '/', 'joindomain')]",
       "location": "[parameters('location')]",
       "dependsOn": [
         "rdsh-vm-loop"
       ],
       "copy": {
         "name": "rdsh-domain-join-loop",
-        "count": "[length(parameters('rdshVmNames'))]"
+        "count": "[parameters('rdshNumberOfInstances')]"
       },
       "properties": {
         "publisher": "Microsoft.Compute",
@@ -415,14 +409,14 @@
     {
       "apiVersion": "2018-10-01",
       "type": "Microsoft.Compute/virtualMachines/extensions",
-      "name": "[concat(parameters('rdshVmNames')[copyIndex()], '/', 'dscextension')]",
+      "name": "[concat(parameters('rdshPrefix'), add(copyindex(), parameters('vmInitialNumber')), '/', 'dscextension')]",
       "location": "[parameters('location')]",
       "dependsOn": [
         "rdsh-domain-join-loop"
       ],
       "copy": {
         "name": "rdsh-dsc-loop",
-        "count": "[length(parameters('rdshVmNames'))]"
+        "count": "[parameters('rdshNumberOfInstances')]"
       },
       "properties": {
         "publisher": "Microsoft.Powershell",
