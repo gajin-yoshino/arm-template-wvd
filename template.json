@@ -331,6 +331,7 @@
     "variables": {
         "rdshManagedDisks": "[if(equals(parameters('vmImageType'), 'CustomVHD'), parameters('vmUseManagedDisks'), bool('true'))]",
         "rdshPrefix": "[concat(parameters('vmNamePrefix'),'-')]",
+        "rdshNamePrefix": "[parameters('vmNamePrefix')]",
         "avSetSKU": "[if(variables('rdshManagedDisks'), 'Aligned', 'Classic')]",
         "existingDomainUsername": "[first(split(parameters('administratorAccountUsername'), '@'))]",
         "vhds": "[concat('vhds','/', variables('rdshPrefix'))]",
@@ -338,17 +339,16 @@
         "hostpoolName": "[replace(parameters('hostpoolName'),'\"','')]",
         "vmTemplateName": "[concat( if(variables('rdshManagedDisks'), 'managedDisks', 'unmanagedDisks'), '-', toLower(replace(parameters('vmImageType'),' ', '')), 'vm')]",
         "vmTemplateUri": "[concat(parameters('nestedTemplatesLocation'), variables('vmTemplateName'),'.json')]",
-        "rdshVmNamesOutput": {
-            "copy": [
-                {
-                    "name": "rdshVmNamesCopy",
-                    "count": "[parameters('vmNumberOfInstances')]",
-                    "input": {
-                        "name": "[concat(variables('rdshPrefix'), add(parameters('vmInitialNumber'), copyIndex('rdshVmNamesCopy')))]"
-                    }
-                }
-            ]
-        }
+         "rdshVmNamesOutput": {
+            "rdshVmNamesCopy": "[variables('rdshVmNames')]"
+        },
+        "copy": [
+            {
+                "name": "rdshVmNames",
+                "count": "[parameters('vmNumberOfInstances')]",
+                "input":"[concat(variables('rdshNamePrefix'), padLeft(add(parameters('vmInitialNumber'), copyIndex('rdshVmNames')), 6, '0'))]"
+            }
+        ]
     },
     "resources": [
         {
@@ -422,6 +422,9 @@
                     "contentVersion": "1.0.0.0"
                 },
                 "parameters": {
+                    "rdshVmNames": {
+                        "value": "[variables('rdshVmNames')]"
+                    },
                     "artifactsLocation": {
                         "value": "[parameters('artifactsLocation')]"
                     },
